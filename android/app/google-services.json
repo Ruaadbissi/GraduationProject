@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "387591528350",
+    "project_id": "test-72481",
+    "storage_bucket": "test-72481.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:387591528350:android:850d511e86a8a883b0808f",
+        "android_client_info": {
+          "package_name": "com.example.magic_cook1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRH1POT88kDOTcjuTBbl3WSIdhvQm7ro8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
