@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:magic_cook1/screens/register/register.dart';
-import 'package:magic_cook1/screens/register/registerTest.dart';
 import 'package:magic_cook1/screens/utils/ui/navigation/navigationBar.dart';
 
 class sliderScreen extends StatefulWidget {

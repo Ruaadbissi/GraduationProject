@@ -1,15 +1,18 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:magic_cook1/screens/homeScreen/homeScreen.dart';
 import 'package:magic_cook1/screens/register/register.dart';
+import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
 import 'package:magic_cook1/screens/utils/ui/common_button.dart';
 import 'package:magic_cook1/screens/utils/ui/common_textFeild.dart';
 import 'package:magic_cook1/screens/utils/ui/navigation/navigationBar.dart';
 import 'package:magic_cook1/screens/utils/ui/progress_hud.dart';
 import 'package:oktoast/oktoast.dart';
+import 'package:provider/provider.dart';
 
+import '../homeScreen/homeScreen.dart';
 
 
 class login extends StatefulWidget {
@@ -25,7 +28,7 @@ class _loginState extends State<login> with TickerProviderStateMixin {
   FocusNode _passwordFocus = FocusNode();
 
   bool _isPassObscure = true;
-
+  String? userName;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,6 @@ class _loginState extends State<login> with TickerProviderStateMixin {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 34,
-                    fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,
                     height: 2,
                     letterSpacing: 6.40,
@@ -143,75 +145,69 @@ class _loginState extends State<login> with TickerProviderStateMixin {
                               }
                               return null; //هيك يعني الشغل صح
                             },
-
-
                           ),
-
                         ),
-                        Align(
-                            alignment: Alignment.topRight,
-                            child: GestureDetector(
-                              onTap: () {
-                                // Handle forget password action
-                                print('Forget Password?');
-                              },
-                              child: Text(
-                                'Forget Password?',
-                                style: TextStyle(
-                                  decoration: TextDecoration.none,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            )),
                       ],
                     ),
                   ),
                 ),
                 SizedBox(height: 20,),
+
                 Container(
                   width: 200,
                   height: 50,
                   margin: EdgeInsets.only(top: 20),
                   child: CustomeButton(
                     title: 'Login',
-                    onTap: ()async {
-                      try {
-                        UserCredential result = await FirebaseAuth.instance
-                            .signInWithEmailAndPassword(
-                          email: _emailController.text,
-                          password: _passwordController.text,
-                        );
-                        if (result.user != null) {
-                          if (result.user!.emailVerified) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => navigationBar()),
-                            );
-                          } else {
-                            showToast("your email is not verified",
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 2)
-                            );
-                          }
-                        }
-                      }catch(e) {
-                        if (e is FirebaseAuthException) {
-                          showToast(e.message!,
-                              backgroundColor: Colors.red,
-                              duration: Duration(seconds: 2)
+                    onTap: () async {
+                      if (_key.currentState!.validate()) {
+                        ProgressHud.shared.startLoading(context);
+
+                        try {
+                          UserCredential result = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                            email: _emailController.text,
+                            password: _passwordController.text,
                           );
+                          if (result.user != null) {
+                            if (result.user!.emailVerified) {
+                              await Provider.of<UserProvider>(context, listen: false).fetchUserName(); // Await fetchUserName
+                              ProgressHud.shared.stopLoading();
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => navigationBar()),
+                              );
+                            } else {
+                              showToast("Your email is not verified",
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 3));
+                            }
+                          }
+                        }  on FirebaseAuthException catch (e) {
+                          if (e.code == 'user-not-found') {
+                            showToast("Email is not registered",
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3));
+                          } else if (e.code == 'wrong-password') {
+                            showToast("Wrong password",
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3));
+                          } else {
+                            showToast(e.message!,
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3));
+                          }
+                          ProgressHud.shared.stopLoading(); // Dismiss HUD on successful login
+                        } catch (e) {
+                          showToast(e.toString(),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3));
+                          ProgressHud.shared.stopLoading(); // Dismiss HUD on successful login
+
                         }
-                        showToast(e.toString(),
-                            backgroundColor: Colors.red,
-                            duration: Duration(seconds: 2)
-                        );
                       }
                     },
                   ),
                 ),
-
                 SizedBox(height: 90,),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -222,7 +218,6 @@ class _loginState extends State<login> with TickerProviderStateMixin {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
-                        fontFamily: 'Inter',
                         fontWeight: FontWeight.w400,
                         height: 0.01,
                         letterSpacing: 3.20,
@@ -242,9 +237,7 @@ class _loginState extends State<login> with TickerProviderStateMixin {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          // Change the color as needed
                           fontSize: 18,
-                          fontFamily: 'Inter',
                           fontWeight: FontWeight.w900,
                           height: 0.01,
                           letterSpacing: 3.20,
@@ -253,12 +246,16 @@ class _loginState extends State<login> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
+
               ],
             ),
           ),
+
         ),
       ),
+
     );
+
   }
 
   bool isValidEmail(String value) {
@@ -266,5 +263,4 @@ class _loginState extends State<login> with TickerProviderStateMixin {
     RegExp regExp = RegExp(pattern);
     return regExp.hasMatch(value);
   }
-
 }

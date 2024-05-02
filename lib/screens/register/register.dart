@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
   FocusNode _userFocus = FocusNode();
   FocusNode _passwordFocus = FocusNode();
   FocusNode _confirmPasswordFocus = FocusNode();
+
   bool _isPassObscure = true;
   bool _isPassObscureConfirm = true;
 
@@ -92,7 +94,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                               label: "User name",
                               radius: 12,
                               prefixIcon:
-                                  Icon(Icons.person, color: Colors.black),
+                              Icon(Icons.person, color: Colors.black),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter a username';
@@ -120,7 +122,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                               label: "Email Address",
                               radius: 12,
                               prefixIcon:
-                                  Icon(Icons.email, color: Colors.black),
+                              Icon(Icons.email, color: Colors.black),
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
                                   return "this field is required";
@@ -171,9 +173,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                                 if (v == null || v.isEmpty) {
                                   return "this field is required";
                                 }
-                                if (v.length < 6) {
-                                  return "Enter password at least 6 digits";
-                                }
+
                                 return null; //هيك يعني الشغل صح
                               },
                             ),
@@ -204,7 +204,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                                 onPressed: () {
                                   setState(() {
                                     _isPassObscureConfirm =
-                                        !_isPassObscureConfirm;
+                                    !_isPassObscureConfirm;
                                   });
                                 },
                               ),
@@ -225,59 +225,68 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                   ),
                 ),
                 Container(
-                  width: 200,
-                  height: 50,
-                  margin: EdgeInsets.only(top: 20),
-                  child: CustomeButton(
-                      title: 'Register',
-                      onTap: () async {
-                        if (_key.currentState!.validate()) {
-                          ProgressHud.shared.startLoading(
-                              context); //تعطي اشارة انه البرنامج بحمل
-                          try {
-                            var acs = ActionCodeSettings(
-                                url: 'https://www.example.com',
-                                handleCodeInApp: true,
-                                iOSBundleId: 'com.example.ios',
-                                androidPackageName: 'com.example.android',
-                                androidInstallApp: true,
-                                androidMinimumVersion: '12');
+                    width: 200,
+                    height: 50,
+                    margin: EdgeInsets.only(top: 20),
+                    child: CustomeButton(
+                        title: 'Register',
+                        onTap: () async {
+                          if (_key.currentState!.validate()) {
+                            ProgressHud.shared.startLoading(
+                                context); //تعطي اشارة انه البرنامج بحمل
+                            try {
+                              var acs = ActionCodeSettings(
+                                //لازم اكون معطيه الدومينز هدول الايميلات
+                                  url: 'https://www.example.com',
+                                  handleCodeInApp: true,
+                                  iOSBundleId: 'com.example.ios',
+                                  androidPackageName: 'com.example.android',
+                                  androidInstallApp: true,
+                                  androidMinimumVersion: '12');
 
-                            UserCredential result = await FirebaseAuth.instance
-                                .createUserWithEmailAndPassword(
-                              email: _emailController.text,
-                              password: _passwordController.text,
-                            );
-                            if (result.user != null) {
-                              result.user!.sendEmailVerification(acs);
-                              _saveDataToFirestore(result.user!.uid);
+                              UserCredential result = await FirebaseAuth
+                                  .instance
+                                  .createUserWithEmailAndPassword(
+                                email: _emailController.text,
+                                password: _passwordController.text,
+                              );
+                              if (result.user != null) {
+                                await result.user!.sendEmailVerification(acs);
+                                _saveDataToFirestore(result
+                                    .user!.uid); //مرقت الuid لللشخص الي سجل
+                                ProgressHud.shared.stopLoading();
+                                showToast("please verify your email",
+                                    //بعطيه بس المسج وهو بطلعه بشكل معين
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 2));
+                                Navigator.of(context).pop();
+                              } else {
+                                print("error");
+                              }
+                            } on FirebaseAuthException catch (e) {
+                              //بمسك الايرور الي بتخص الفيربيس بس
+                              print(e);
                               ProgressHud.shared.stopLoading();
-                              showToast("please verify your email",
-                                  backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2));
-
-                            } else {
-                              print("error");
+                              showToast(e.message ?? "Error",
+                                  backgroundColor: Colors.red);
+                              // todo call register function
+                            } catch (e) {
+                              //بمسك باقي الايرور
+                              print(e);
+                              ProgressHud.shared.stopLoading();
+                              showToast(e.toString(),
+                                  backgroundColor: Colors.red);
+                              showToastWidget(Container(
+                                height: 80,
+                                width: 100.w,
+                                child: Text(e.toString()),
+                              ));
                             }
-                          } on FirebaseAuthException catch (e) {
-                            print(e);
-                            ProgressHud.shared.stopLoading();
-                            showToast(e.message ?? "Error",
-                                backgroundColor: Colors.red);
-                            //todo call register
-                          } catch (e) {
-                            print(e);
-                            ProgressHud.shared.stopLoading();
-                            showToast(e.toString(),
-                                backgroundColor: Colors.red);
                           }
-                        }
-                      }),
-                ),
+                        })),
                 SizedBox(
                   height: 10,
                 ),
-                // Row with "Not Registered yet?" and "Register now"
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -295,7 +304,7 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                     SizedBox(width: 1),
                     TextButton(
                       onPressed: () {
-                        // Navigate to the Login page
+                        // Navigate to the login page
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => login()),
@@ -305,8 +314,8 @@ class _registerState extends State<register> with TickerProviderStateMixin {
                         'Login now',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
+                          color: Colors.white,
+                          fontSize: 18,
                           fontWeight: FontWeight.w900,
                           height: 0.01,
                           letterSpacing: 3.20,
@@ -329,13 +338,12 @@ class _registerState extends State<register> with TickerProviderStateMixin {
     return regExp.hasMatch(value);
   }
 
-  void _saveDataToFirestore(String uid) {
-    Map<String, dynamic> map ={};
-    map.putIfAbsent("Email", () => _emailController.text);
+  _saveDataToFirestore(String uid) {
+    Map<String, dynamic> map = {};
     map.putIfAbsent("UserName", () => _userNameController.text);
+    map.putIfAbsent("Email", () => _emailController.text);
     map.putIfAbsent("isVerify", () => false);
     map.putIfAbsent("UID", () => uid);
-    FirebaseFirestore.instance.collection("Users").add(map);
-
+    FirebaseFirestore.instance.collection("Users").add(map); //اسم الكولكشن
   }
 }

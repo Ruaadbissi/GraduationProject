@@ -1,28 +1,35 @@
-import 'dart:convert';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:magic_cook1/screens/shoppingList/shoppingList.dart';
+import 'package:magic_cook1/screens/mealPlanning/mealPlanning.dart';
+import 'package:magic_cook1/screens/utils/helper/planning/mealPlanningPref.dart';
+import 'package:magic_cook1/screens/utils/helper/shoppingList/shoppingProvider.dart';
+import 'package:magic_cook1/screens/utils/helper/shoppingList/shopping_list_manager.dart';
+import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
 import 'package:provider/provider.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
-import 'package:http/http.dart' as http;
-import 'package:magic_cook1/screens/utils/helper/shoppingProvider.dart';
-import 'package:magic_cook1/screens/utils/helper/shopping_list_manager.dart';
 
-class detailsScreen extends StatefulWidget {
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+
+class RecipeDetailsPage extends StatefulWidget {
   final String recipeName;
   final String categoryName;
 
-  const detailsScreen({Key? key, required this.recipeName, required this.categoryName}) : super(key: key);
+  const RecipeDetailsPage({Key? key, required this.recipeName, required this.categoryName}) : super(key: key);
 
   @override
-  State<detailsScreen> createState() => _detailsScreenState();
+  State<RecipeDetailsPage> createState() => _detailsScreenState();
 }
 
-class _detailsScreenState extends State<detailsScreen> {
+class _detailsScreenState extends State<RecipeDetailsPage> {
   late ShoppingListManager _shoppingListManager;
   final PanelController _panelController = PanelController();
   late Map<String, dynamic> _details = {};
-  late List<String> _tags = [];
 
   @override
   void initState() {
@@ -46,7 +53,6 @@ class _detailsScreenState extends State<detailsScreen> {
         if (meals != null && meals.isNotEmpty) {
           setState(() {
             _details = meals[0];
-            _fetchTags();
           });
         }
       } else {
@@ -57,23 +63,11 @@ class _detailsScreenState extends State<detailsScreen> {
     }
   }
 
-  Future<void> _fetchTags() async {
-    try {
-      final response = await http.get(Uri.parse('https://www.themealdb.com/api/json/v1/1/list.php?i=list'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final tags = data['meals'];
-        if (tags != null && tags.isNotEmpty) {
-          setState(() {
-            _tags = List<String>.from(tags.map((tag) => tag['strIngredient'] as String));
-          });
-        }
-      } else {
-        throw Exception('Failed to fetch tags. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching tags: $e');
-    }
+  void updateCartState() {
+    // Update the state of the cart icon
+    setState(() {
+      // Update the state based on whether the ingredient is in the shopping list
+    });
   }
 
 
@@ -126,8 +120,8 @@ class _detailsScreenState extends State<detailsScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(100),
-                  bottomRight: Radius.circular(100),
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
                 ),
                 child: Image.network(
                   _details['strMealThumb'] ?? '',
@@ -175,11 +169,11 @@ class _detailsScreenState extends State<detailsScreen> {
             ),
             Positioned(
               top: 0,
-              left: 0,
+              left: 12,
               child: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: Colors.amber.shade900,
+                  color: Colors.white,
                   size: 40,
                 ),
                 onPressed: () {
@@ -198,54 +192,191 @@ class _detailsScreenState extends State<detailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align items at the ends
                     children: [
-                      Icon(Icons.link,color:  Colors.amber.shade900,),
-                      SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () {
-                          String videoLink = _details['strYoutube'] ?? '';
-                          if (videoLink.isNotEmpty) {
-                            //not yet
-                           }
+                      FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance.collection('details').doc(widget.recipeName).get(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return CircularProgressIndicator();
+                          } else if (snapshot.hasError) {
+                            return Text('Error: ${snapshot.error}');
+                          } else if (snapshot.hasData) {
+                            if (snapshot.data!.exists) {
+                              String timer = snapshot.data!['timer'] ?? 0;
+                              return
+                                Text(
+                                  'Timer: ${timer.toString()} ',
+                                  style: TextStyle(
+
+                                    fontSize: 16,
+
+                                    color: Colors.amber.shade900,
+                                  ),
+                                );
+
+
+                            } else {
+                              return Text('Timer information not available');
+                            }
+                          }
+                          return Text('No data available');
                         },
-                        child: RichText(
-                          text: TextSpan(
-                            text: 'Watch the Instructions Video',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.amber.shade900,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
                       ),
+                      // Add Recipe to Calendar button
+                      IconButton(
+                        icon: Icon(
+                          Icons.calendar_month,
+                          color: Colors.amber.shade900,
+                          size: 32,
+                        ),
+                        onPressed: () async {
+                          String recipeName = widget.recipeName; // Get the recipe name
+                          await MealPlanningRecipePreferences.saveRecipeName(recipeName); // Save the recipe name
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                backgroundColor: Theme.of(context).cardColor,
+                                title: Text('Do you want to add this recipe to your meal planning?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context); // Close dialog
+                                    },
+                                    child: Text(
+                                      'No',
+                                      style: TextStyle(
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      String recipeName = widget.recipeName; // Get the recipe name
+                                      await MealPlanningRecipePreferences.saveRecipeName(recipeName); // Save the recipe name
+                                      Navigator.pop(context); // Close dialog
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => MealPlanningScreen(recipeName: widget.recipeName),
+                                        ),
+                                      );
+
+                                    },
+
+                                    child: Text(
+                                      'Yes',
+                                      style: TextStyle(
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+
                     ],
                   ),
+                  GestureDetector(
+                    onTap: () {
+                      String videoLink = _details['strYoutube'] ?? '';
+                      if (videoLink.isNotEmpty) {
+                        launch(videoLink); // Assuming you're using the url_launcher package
+                      } else {
+                        // Handle case where video link is not available
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Video Not Available'),
+                            content: Text('Sorry, no video instructions are available for this recipe.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Watch the Instructions Video',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.amber.shade900,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+
                   SizedBox(height: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Container(
-                          width: 190,
-                          height: 45,
-                          padding: EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade900,
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Ingredients',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).scaffoldBackgroundColor,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align items at the ends
+                        children: [
+                          Container(
+                            width: 150,
+                            height: 45,
+                            padding: EdgeInsets.all(8.0),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade900,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child:
+                            Center(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Ingredients',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).scaffoldBackgroundColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ),
+                          Container(
+                            width: 110,
+                            height: 45,
+                            padding: EdgeInsets.all(8.0),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade900,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child:
+                            Center(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Add ingredient\nto cart',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).scaffoldBackgroundColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          ),
+                        ],
                       ),
                       SizedBox(height: 4),
                       if (_details['strIngredient1'] != null)
@@ -257,14 +388,76 @@ class _detailsScreenState extends State<detailsScreen> {
                                 Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                                   child: Container(
-                                    child: IngredientItem(name: '${_details['strMeasure$i']} ${_details['strIngredient$i']} ', recipeName: '',),
+                                      child: IngredientItem(
+                                        name: '${_details['strMeasure$i']} ${_details['strIngredient$i']}',
+                                        recipeName: '',
+                                        ingredient: _details['strIngredient$i'],
+                                        imageUrl: 'https://www.themealdb.com/images/ingredients/${_details['strIngredient$i'].toLowerCase()}.png',
+                                        updateCartState: updateCartState,
+                                      )
                                   ),
                                 ),
                           ],
                         ),
+
                     ],
                   ),
                   SizedBox(height: 16),
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('details').doc(widget.recipeName).get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator();
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else if (snapshot.hasData) {
+                        if (snapshot.data!.exists) {
+                          Map<String, dynamic> nutritionInfo = snapshot.data!['utrition_info'] ?? {};
+                          return Card(
+                            elevation: 4, // Add elevation for a shadow effect
+                            margin: EdgeInsets.all(10), // Add margin around the card
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'Nutrition Information',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber.shade900, // Adjust text color as needed
+                                    ),
+                                  ),
+                                ),
+                                Divider(), // Add a divider for separation
+                                // Use ListView to display nutrition details
+                                ListView(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  children: nutritionInfo.entries.map((entry) {
+                                    return ListTile(
+                                      title: Text(
+                                        '${entry.key}: ${entry.value}',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.white, // Adjust text color as needed
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          return Text('Nutrition information not available');
+                        }
+                      }
+                      return Text('No data available');
+                    },
+                  ),
+
                   Center(
                     child: ElevatedButton(
                       onPressed: () {
@@ -305,7 +498,7 @@ class _detailsScreenState extends State<detailsScreen> {
         children: [
           Center(
             child: Text(
-              '______',
+              '__',
               style: TextStyle(
                 fontSize: 24,
                 color: Colors.amber.shade900,
@@ -353,74 +546,127 @@ class _detailsScreenState extends State<detailsScreen> {
 class IngredientItem extends StatefulWidget {
   final String name;
   final String recipeName;
+  final String ingredient;
+  final String imageUrl;
+  final Function updateCartState; // Callback function
 
-  const IngredientItem({Key? key, required this.name, required this.recipeName}) : super(key: key);
+  const IngredientItem({
+    Key? key,
+    required this.name,
+    required this.recipeName,
+    required this.ingredient,
+    required this.imageUrl,
+    required this.updateCartState,
+  }) : super(key: key);
 
   @override
   _IngredientItemState createState() => _IngredientItemState();
 }
 
 class _IngredientItemState extends State<IngredientItem> {
-  bool _isCartClicked = false;
+  late UserProvider _userProvider;
 
   @override
-  void initState() {
-    super.initState();
-    _checkItemStatus();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userProvider = Provider.of<UserProvider>(context); // Get the UserProvider from the context
   }
 
-  void _checkItemStatus() {
-    final shoppingListProvider = Provider.of<ShoppingListProvider>(context, listen: false);
-    if (shoppingListProvider.shoppingList.contains(widget.name)) {
-      setState(() {
-        _isCartClicked = true;
-      });
-    }
+  void _addToShoppingList(String ingredient) {
+    final shoppingListProvider =
+    Provider.of<ShoppingListProvider>(context, listen: false);
+    shoppingListProvider.addItem(
+      widget.name,
+      'https://www.themealdb.com/images/ingredients/${widget.ingredient.toLowerCase()}.png',
+    );
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Theme.of(context).cardColor,
+          title: Text(
+            'You need to be logged in to add ingredients to shopping list.',
+            style: TextStyle(
+              color: Theme.of(context).primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final shoppingListProvider = Provider.of<ShoppingListProvider>(context);
-    final isItemAdded = shoppingListProvider.shoppingList.contains(widget.name);
-    final isClearing = shoppingListProvider.isClearing; // Get isClearing from the provider
-
+    final isClearing = shoppingListProvider.isClearing;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 0),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: isClearing // Check if the list is being cleared
-                ? null // Disable onTap when the list is being cleared
-                : () {
-              setState(() {
-                _isCartClicked = !_isCartClicked;
-                if (!isClearing) { // Only perform action if not clearing the list
-                  if (_isCartClicked) {
-                    shoppingListProvider.addItem(widget.name, widget.recipeName);
-                  } else {
-                    shoppingListProvider.removeItem(widget.name);
-                  }
-                }
-              });
-            },
-            child: _isCartClicked
-                ? Icon(
-              isClearing ? Icons.shopping_cart_outlined : Icons.shopping_cart,
-              color: Colors.amber.shade900,
-              size: 24,
-            )
-                : Icon(
-              Icons.shopping_cart_outlined,
-              color: Colors.amber.shade900,
-              size: 24,
+          // Ingredient image
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              image: DecorationImage(
+                image: NetworkImage(widget.imageUrl),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           SizedBox(width: 8),
-          Text(
-            '${widget.name} ',
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).primaryColor,
+          // Ingredient name
+          Expanded(
+            child: Text(
+              '${widget.name} ',
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ),
+          // Cart icon
+          GestureDetector(
+            onTap: isClearing
+                ? null
+                : () {
+              final User? user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                if (_userProvider.userName == "Guest User") {
+                  _showLoginRequiredDialog(context);
+                } else {
+                  _addToShoppingList(widget.ingredient);
+                }
+              } else {
+                _showLoginRequiredDialog(context);
+              }
+            },
+            child: Icon(
+              Icons.add,
+              color: Colors.amber.shade900,
+              size: 24,
             ),
           ),
         ],
@@ -428,3 +674,4 @@ class _IngredientItemState extends State<IngredientItem> {
     );
   }
 }
+

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:magic_cook1/screens/faviourtPage/favoriteScreen.dart';
 import 'package:magic_cook1/screens/homeScreen/homeScreen.dart';
-import 'package:magic_cook1/screens/profileScreen/profileScreen.dart';
 import 'package:magic_cook1/screens/shoppingList/shoppingList.dart';
 import 'package:magic_cook1/screens/utils/helper/model.dart';
 
 import 'package:persistent_bottom_nav_bar/persistent_tab_view.dart';
+
+import '../../../mealPlanning/mealPlanning.dart';
 
 
 class navigationBar extends StatefulWidget {
@@ -17,12 +18,15 @@ class navigationBar extends StatefulWidget {
 
 class _NavigationBarState extends State<navigationBar> {
   int _currentIndex = 0;
+
   List<placeModel> _favoritePlaces = [];
+  IconData _selectedIcon = Icons.home; // Add this variable to track the selected icon
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _tabBar(),
+
     );
   }
 
@@ -36,10 +40,11 @@ class _NavigationBarState extends State<navigationBar> {
     return PersistentTabView(
       context,
       screens: [
-        homeScreen(updateFavorites: updateFavorites),
+        homeScreen(updateFavorites: (List dynamic ) {  },),
         FavoritesPage(),
-        shoppingList(recipeName: '',),
-        profileScreen(),
+        shoppingList(recipeName: '', onItemRemoved: (String ) {  },),
+        MealPlanningScreen(),
+
       ],
       navBarHeight: 70,
       backgroundColor: Theme.of(context).bottomAppBarColor,
@@ -71,7 +76,7 @@ class _NavigationBarState extends State<navigationBar> {
               : Theme.of(context).primaryColor,
         ),
         PersistentBottomNavBarItem(
-          icon: const Icon(Icons.person),
+          icon: const Icon(Icons.calendar_month),
           activeColorPrimary: _currentIndex == 3
               ? Colors.amber.shade900
               : Theme.of(context).primaryColor,

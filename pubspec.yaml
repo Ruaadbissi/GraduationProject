@@ -51,6 +51,11 @@ dependencies:
   oktoast:
   cloud_firestore:
   http:
+  table_calendar:
+  flutter_translate:
+  url_launcher:
+  google_translate:
+  translator:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
