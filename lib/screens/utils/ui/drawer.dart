@@ -5,9 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:magic_cook1/screens/login/login.dart';
 import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
 import 'package:magic_cook1/screens/utils/ui/Theme/themeSwitch.dart';
-import 'package:magic_cook1/screens/utils/ui/rate/rate.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:persistent_bottom_nav_bar/persistent_tab_view.dart';
 import 'package:provider/provider.dart';
+import 'package:sizer/sizer.dart';
 
 class CustomDrawer extends StatefulWidget {
   @override
@@ -17,6 +18,16 @@ class CustomDrawer extends StatefulWidget {
 class _CustomDrawerState extends State<CustomDrawer> {
   bool _isPassObscure = true;
 
+  void _showToast(String message) {
+    showToast(
+      message,
+      duration: Duration(seconds: 2),
+      position: ToastPosition.bottom,
+      backgroundColor: Colors.amber.shade900,
+      radius: 8.0,
+      textStyle: TextStyle(fontSize: 16.0, color: Colors.black),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +42,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 return _buildUserContainer(context, userProvider.userName);
               },
             ),
-            Divider(),
-            SizedBox(height: 20),
-            SizedBox(height: 20),
+            Divider(color:Theme.of(context).primaryColor, ),
+            SizedBox(height: 3.h),
             _buildMenuItem(
               context,
               Icons.nightlight_round,
@@ -45,22 +55,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       ? ThemeMode.dark
                       : ThemeMode.light,
                 );
-              },
-            ),
-            _buildMenuItem(
-              context,
-              Icons.language,
-              'Language',
-                  () {
-                // _showLanguageSelectionDialog();
-              },
-            ),
-            _buildMenuItem(
-              context,
-              Icons.rate_review,
-              'Rate Us',
-                  () {
-                _showRatingDialog(context);
               },
             ),
             _buildMenuItem(
@@ -79,11 +73,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   Widget _buildUserContainer(BuildContext context, String userName) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+      padding:  EdgeInsets.symmetric(horizontal: 3.w, vertical: 3.w),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(5.w),
           boxShadow: [
             BoxShadow(
               color: Colors.black,
@@ -108,22 +102,22 @@ class _CustomDrawerState extends State<CustomDrawer> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                padding:  EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
                 child: Text(
                   userName,
                   style: TextStyle(
                     color: Theme.of(context).primaryColor,
-                    fontSize: 24,
+                    fontSize: 20.sp,
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:  EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
                 child: Text(
                   userName == "Guest User" ? 'Log in now' : 'Edit Profile',
                   style: TextStyle(
                     color: Colors.grey,
-                    fontSize: 14,
+                    fontSize: 12.sp,
                   ),
                 ),
               ),
@@ -136,11 +130,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   Widget _buildMenuItem(BuildContext context, IconData icon, String title, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+      padding:  EdgeInsets.symmetric(horizontal: 3.w, vertical: 3.w),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(5.w),
           boxShadow: [
             BoxShadow(
               color: Colors.black,
@@ -153,10 +147,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
         child: ListTile(
           leading: Icon(icon, color: Theme.of(context).primaryColor),
           title: Padding(
-            padding: const EdgeInsets.only(top: 10.0),
+            padding:  EdgeInsets.only(top: 1.w),
             child: Text(
               title,
-              style: TextStyle(fontSize: 20, color: Theme.of(context).primaryColor),
+              style: TextStyle(fontSize: 15.sp, color: Theme.of(context).primaryColor),
             ),
           ),
           onTap: onTap,
@@ -172,21 +166,22 @@ class _CustomDrawerState extends State<CustomDrawer> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(5.w),
           ),
-          backgroundColor: Theme.of(context).cardColor,
+          backgroundColor: Theme.of(context).canvasColor,
           title: Text(
             'Enter your Current Password to allow Modifications',
             style: TextStyle(
-              color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp
             ),
           ),
           content: Container(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: 3.w),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.amber.shade900, width: 2),
-              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Theme.of(context).backgroundColor, width: 2),
+              borderRadius: BorderRadius.circular(8.w),
               color: Colors.grey.withOpacity(0.1),
             ),
             child: TextField(
@@ -207,7 +202,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
               },
               child: Text(
                 'Cancel',
-                style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 10.sp),
               ),
             ),
             TextButton(
@@ -229,92 +224,16 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   }
                 } catch (e) {
                   // Password is incorrect, display a toast message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Incorrect password')),
-                  );
+                  _showToast('Incorrect password');
+
                 }
               },
               child: Text(
                 'Confirm',
-                style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 10.sp),
               ),
             ),
           ],
-        );
-      },
-    );
-  }
-
-  void _showRatingDialog(BuildContext context) {
-    int _rating = 0; // Default rating
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              backgroundColor: Theme.of(context).cardColor,
-              child: Container(
-                padding: EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    Center(
-                      child: Text(
-                        'Rate Us',
-                        style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 7),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        for (int i = 1; i <= 5; i++)
-                          IconButton(
-                            icon: _rating >= i
-                                ? Icon(size: 30, Icons.star, color: Colors.amber.shade900)
-                                : Icon(size: 30, Icons.star_border, color: Colors.grey),
-                            onPressed: () {
-                              setState(() {
-                                _rating = i;
-                              });
-                            },
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    rate(),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        TextButton(
-                          onPressed: () {
-                            // TODO: Handle submitting feedback (e.g., send to backend)
-                            Navigator.of(context).pop();
-                          },
-                          child: Text('Submit', style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16)),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          child: Text('Cancel', style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
         );
       },
     );
@@ -326,14 +245,15 @@ class _CustomDrawerState extends State<CustomDrawer> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(5.w),
           ),
-          backgroundColor: Theme.of(context).cardColor,
+          backgroundColor: Theme.of(context).canvasColor,
           title: Text(
             'Are you sure you want to logout and exit the app?',
             style: TextStyle(
-              color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp
             ),
           ),
           actions: <Widget>[
@@ -341,15 +261,20 @@ class _CustomDrawerState extends State<CustomDrawer> {
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('No',
-                  style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16)),
+              child: Text(
+                  'No',
+                  style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 10.sp)
+              ),
             ),
             TextButton(
               onPressed: () {
                 FirebaseAuth.instance.signOut(); // Logout the user
                 SystemChannels.platform.invokeMethod('SystemNavigator.pop'); // Close the app
               },
-              child: Text('Yes', style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16)),
+              child: Text(
+                  'Yes',
+                  style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 10.sp)
+              ),
             ),
           ],
         );

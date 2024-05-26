@@ -1,70 +1,72 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:magic_cook1/l10n/app_localizations.dart';
-import 'package:magic_cook1/screens/detailsScreen/detailsScreen.dart';
+import 'package:magic_cook1/screens/detailsScreen/detailsScreen.dart'; // Importing details screen
+import 'package:provider/provider.dart'; // Importing provider for state management
+import 'package:http/http.dart' as http; // Importing http package for API requests
+import 'dart:convert'; // Importing json package for JSON decoding
 
-import 'package:magic_cook1/screens/utils/helper/favProvider.dart';
-import 'package:magic_cook1/screens/utils/helper/model.dart';
-import 'package:provider/provider.dart';
+import 'package:magic_cook1/screens/utils/helper/favorite/favProvider.dart'; // Importing favorite provider
+import 'package:sizer/sizer.dart'; // Importing sizer for responsive design
 
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-
-
-class FavoritesPage extends StatelessWidget {
+class FavoritesPage extends StatelessWidget { // Stateless widget for favorite recipes page
   const FavoritesPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Set background color
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: Colors.transparent, // Transparent app bar
+        elevation: 0, // No elevation
         title: Text(
-          AppLocalizations.of(context)!.favorite,
+          "Favourite List",
           style: TextStyle(
-            fontSize: 35,
+            fontSize: 25.sp,
             color: Theme.of(context).primaryColor,
             fontFamily: "fonts/Raleway-Bold",
           ),
         ),
       ),
-      body: Consumer<FavoritePlacesProvider>(
+      body: Consumer<FavoritePlacesProvider>( // Using provider to get favorite places
         builder: (context, favoriteProvider, child) {
-          final List<String> favoriteIds = favoriteProvider.favoriteRecipeIds.toList();
+          final List favoriteIds = favoriteProvider.favoriteList.map((item) => item['id']).toList(); // Get favorite IDs
           return ListView.builder(
-            itemCount: favoriteIds.length,
+            itemCount: favoriteProvider.favoriteList.length, // Number of favorite items
             itemBuilder: (context, index) {
-              final String id = favoriteIds[index];
-              return FutureBuilder<Map<String, dynamic>?>(
-                future: _fetchRecipeById(id),
+              final Map<String, dynamic> recipe = favoriteProvider.favoriteList[index]; // Get recipe data
+              final String id = recipe['id']; // Get recipe ID
+              return FutureBuilder<Map<String, dynamic>>(
+                future: _fetchRecipeById(id), // Fetch recipe data by ID
                 builder: (context, snapshot) {
-
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).backgroundColor,
+                      ),
+                    );
+                  }
                   if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
+                    return Text('Error: ${snapshot.error}'); // Show error message
                   }
                   if (snapshot.hasData) {
-                    final recipe = snapshot.data!;
+                    final recipe = snapshot.data!; // Get recipe data
                     return InkWell(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecipeDetailsPage(
-                              recipeName: recipe['strMeal'],
-                              categoryName: recipe['strCategory'],
+                              recipeName: recipe['strMeal'], // Pass recipe name to details page
+                              categoryName: recipe['strCategory'], // Pass category name to details page
                             ),
                           ),
                         );
                       },
                       child: Container(
-                        margin: EdgeInsets.all(8),
-                        width: 340,
-                        height: 90,
+                        margin: EdgeInsets.all(2.w),
+                        width: 90.w,
+                        height: 12.h,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(6.w),
                           color: Theme.of(context).cardColor,
                         ),
                         child: Row(
@@ -73,56 +75,56 @@ class FavoritesPage extends StatelessWidget {
                             Row(
                               children: [
                                 SizedBox(
-                                  width: 10,
-                                  height: 60,),
+                                  width: 2.w,
+                                  height: 2.h,
+                                ),
                                 Container(
-                                  width: 60,
-                                  height: 60,
+                                  width: 15.w,
+                                  height: 8.h,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(50), // Apply border radius to make the image rounded
+                                    borderRadius: BorderRadius.circular(10.h),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.grey.withOpacity(0.5),
                                         spreadRadius: 1,
                                         blurRadius: 2,
-                                        offset: Offset(0, 2), // changes position of shadow
+                                        offset: Offset(0, 2),
                                       ),
                                     ],
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(50), // Clip the image to the rounded border
+                                    borderRadius: BorderRadius.circular(10.h),
                                     child: Image.network(
-                                      recipe['strMealThumb'] ?? '',
+                                      recipe['strMealThumb'] ?? '', // Display recipe image
                                       fit: BoxFit.cover,
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: 2.w),
                                 Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     SizedBox(
-                                      width: 250,
+                                      width: 60.w,
                                       child: Text(
-                                        recipe['strMeal'] ?? '',
+                                        recipe['strMeal'] ?? '', // Display recipe name
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: Colors.amber.shade900,
-                                          fontSize: 16,
+                                          fontSize: 13.sp,
                                         ),
                                       ),
                                     ),
-
-                                    SizedBox(height: 2),
+                                    SizedBox(height: 1.h),
                                     Text(
-                                      recipe['strCategory'] ?? '',
+                                      recipe['strCategory'] ?? '', // Display recipe category
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).canvasColor,
-                                        fontSize:14,
+                                        color:Theme.of(context).hintColor,
+                                        fontSize: 11.sp,
                                       ),
                                     ),
                                   ],
@@ -131,20 +133,22 @@ class FavoritesPage extends StatelessWidget {
                             ),
                             GestureDetector(
                               onTap: () {
-                                favoriteProvider.toggleFavoriteById(id);
+                                favoriteProvider.toggleFavoriteById(id, recipe['strMeal']); // Toggle favorite status
                               },
                               child: Icon(
-                                Icons.favorite,
-                                color: Colors.amber.shade900,
+                                favoriteProvider.isFavoriteById(id)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: Theme.of(context).backgroundColor,
                               ),
                             ),
-                            SizedBox(width: 1,),
+                            SizedBox(width: 1.w,),
                           ],
                         ),
                       ),
                     );
                   }
-                  return SizedBox(); // Return empty container if snapshot has neither data nor error
+                  return SizedBox(); // Return empty if no data
                 },
               );
             },
@@ -154,26 +158,27 @@ class FavoritesPage extends StatelessWidget {
     );
   }
 
-  Future<Map<String, dynamic>?> _fetchRecipeById(String id) async {
+  Future<Map<String, dynamic>> _fetchRecipeById(String id) async {
+    // Function to fetch recipe data by ID
     try {
-      final apiUrl = 'https://www.themealdb.com/api/json/v1/1/lookup.php?i=$id';
-      final response = await http.get(Uri.parse(apiUrl));
+      final apiUrl = 'https://www.themealdb.com/api/json/v1/1/lookup.php?i=$id'; // API URL
+      final response = await http.get(Uri.parse(apiUrl)); // Make HTTP request
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> meals = data['meals'];
+        final data = json.decode(response.body); // Decode JSON response
+        final List<dynamic> meals = data['meals']; // Get meals data
 
         if (meals != null && meals.isNotEmpty) {
-          return Map<String, dynamic>.from(meals.first);
+          return Map<String, dynamic>.from(meals.first); // Return first meal data
         } else {
           throw Exception('Invalid data format');
         }
       } else {
-        throw Exception('Failed to load data: ${response.statusCode}');
+        throw Exception('Failed to load data: ${response.statusCode}'); // Handle HTTP error
       }
     } catch (e) {
-      print('Error fetching recipe: $e');
-      return null;
+      print('Error fetching recipe: $e'); // Print error to console
+      throw e; // Throw error
     }
   }
 }

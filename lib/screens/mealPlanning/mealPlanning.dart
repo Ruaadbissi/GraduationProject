@@ -1,105 +1,168 @@
 import 'package:flutter/material.dart';
-import 'package:magic_cook1/screens/detailsScreen/detailsScreen.dart';
-import 'package:magic_cook1/screens/utils/helper/planning/mealPlanningPref.dart';
+import 'package:provider/provider.dart';
+import 'package:sizer/sizer.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:oktoast/oktoast.dart'; // Import oktoast package
+import 'package:oktoast/oktoast.dart';
+import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
+import 'package:magic_cook1/screens/detailsScreen/detailsScreen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:magic_cook1/screens/utils/helper/planning/mealPlanningPref.dart';
 
+// Define a stateful widget for meal planning
 class MealPlanningScreen extends StatefulWidget {
-  final String? recipeName; // Add recipeName parameter
-  MealPlanningScreen({Key? key, this.recipeName}) : super(key: key);
+  final String? recipeName; // Recipe name to be added to the calendar
+  final bool showLeadingArrow; // Option to show back arrow in AppBar
+
+  MealPlanningScreen({Key? key, this.recipeName, this.showLeadingArrow = false})
+      : super(key: key);
 
   @override
   _MealPlanningScreenState createState() => _MealPlanningScreenState();
 }
 
+// Define the state for the meal planning widget
 class _MealPlanningScreenState extends State<MealPlanningScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
-  Map<DateTime, List<String>> _events = {}; // Events map to store recipe names for each date
+  CalendarFormat _calendarFormat = CalendarFormat.month; // Initial calendar format
+  DateTime _focusedDay = DateTime.now(); // Initially focused day
+  DateTime? _selectedDay; // Currently selected day
+  late UserProvider _userProvider; // Provider to manage user data
+  Map<DateTime, List<String>> _events = {}; // Map to store events
 
   @override
   void initState() {
     super.initState();
-    _getSavedEvents(); // Load previously saved events
+    _getUserData(); // Call to check user data
   }
 
-  // Method to retrieve saved events from SharedPreferences
-  Future<void> _getSavedEvents() async {
-    Map<DateTime, List<String>> events = await MealPlanningRecipePreferences.getEvents();
-    setState(() {
-      _events = events;
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userProvider = Provider.of<UserProvider>(context);
+    if (_userProvider.userName != "Guest User") {
+      _getEventsData(); // Load events if the user is not a guest
+    }
   }
 
-  // Method to add a recipe to the calendar
-  Future<void> _addRecipeToCalendar(DateTime selectedDate, String recipeName) async {
-    // Check if the recipe is already present for the selected date
-    if (_events.containsKey(selectedDate) && _events[selectedDate]!.contains(recipeName)) {
-      _showToast('Recipe already added for this date');
+  // Fetch events data from preferences
+  Future<void> _getEventsData() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      final events = await MealPlanningRecipePreferences.getEvents(user.uid);
+      setState(() {
+        _events.clear();
+        _events.addAll(events); // Add fetched events to the map
+      });
+    }
+  }
+
+  // Get user data and clear calendar if the user is a guest
+  Future<void> _getUserData() async {
+    _userProvider = Provider.of<UserProvider>(context);
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous && _userProvider.userName == "Guest User") {
+      await MealPlanningRecipePreferences.clearCalendar(user.uid);
+      setState(() {
+        _events = {}; // Clear events
+      });
+    }
+  }
+
+  // Add a recipe to the calendar
+  Future<void> _addRecipeToCalendar(DateTime selectedDay, String recipeName) async {
+    final DateTime currentDate = DateTime.now();
+
+    // Prevent adding recipes to past dates
+    if (selectedDay.isBefore(currentDate)) {
+      _showToast("You can't go back in time to cook that!");
       return;
     }
 
-    // Call the addRecipe method from MealPlanningRecipePreferences to save the recipe to the calendar
-    await MealPlanningRecipePreferences.addRecipe(selectedDate, recipeName);
+    // Prevent adding the same recipe multiple times to the same day
+    if (_events.containsKey(selectedDay) && _events[selectedDay]!.contains(recipeName)) {
+      _showToast("Recipe already added for this day");
+      return;
+    }
 
-    // Refresh the events by calling _getSavedEvents
-    _getSavedEvents();
+    // Update state to include the new event
+    setState(() {
+      if (_events.containsKey(selectedDay)) {
+        _events[selectedDay]!.add(recipeName);
+      } else {
+        _events[selectedDay] = [recipeName];
+      }
+    });
 
+    // Save the event to preferences if the user is not anonymous
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      await MealPlanningRecipePreferences.addRecipe(selectedDay, recipeName, user.uid);
+    }
     _showToast('Recipe added successfully');
   }
 
+  // Navigate to the recipe details page
   void _viewRecipeDetails(String recipeName) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RecipeDetailsPage(recipeName: recipeName, categoryName: ''),
+        builder: (context) => RecipeDetailsPage(
+          recipeName: recipeName,
+          categoryName: '',
+        ),
       ),
     ).then((value) {
-      // Add recipe to calendar when navigating back from the details screen
+      // Add recipe to calendar upon returning if a recipe was selected
       if (value != null && value is String) {
         _addRecipeToCalendar(_selectedDay ?? DateTime.now(), value);
       }
     });
   }
 
+  // Function to show toast messages
   void _showToast(String message) {
     showToast(
       message,
       duration: Duration(seconds: 2),
       position: ToastPosition.bottom,
-      backgroundColor: Colors.black.withOpacity(0.8),
+      backgroundColor: Colors.amber.shade900,
       radius: 8.0,
-      textStyle: TextStyle(fontSize: 16.0, color: Colors.white),
+      textStyle: TextStyle(fontSize: 16.0, color: Colors.black),
     );
   }
 
+  // Build a list of event widgets for a given day
   List<Widget> _buildEventsForDay(DateTime date) {
     List<Widget> eventWidgets = [];
+
+    // Do not show events for guest users
+    if (_userProvider.userName == "Guest User") {
+      return eventWidgets;
+    }
+
+    // Build event widgets for the given date
     if (_events.containsKey(date)) {
       _events[date]!.forEach((recipeName) {
         eventWidgets.add(
           Dismissible(
-            key: Key(recipeName), // Unique key for each recipe
+            key: Key(recipeName), // Key for dismissible widget
             onDismissed: (direction) {
-              _removeRecipeFromCalendar(date, recipeName);
+              _removeRecipeFromCalendar(date, recipeName); // Remove recipe on swipe
             },
             background: Container(
-              color: Colors.deepOrange,
+              color: Theme.of(context).backgroundColor,
               alignment: Alignment.centerRight,
-              // padding: EdgeInsets.only(right: 16.0),
-              child: Icon(Icons.delete, color: Colors.white),
+              child: Icon(Icons.delete, color: Theme.of(context).scaffoldBackgroundColor,),
             ),
             child: GestureDetector(
-              onTap: () => _viewRecipeDetails(recipeName),
+              onTap: () => _viewRecipeDetails(recipeName), // View recipe details on tap
               child: Center(
                 child: Container(
-                  width: 365,
+                  width: 90.w,
                   margin: EdgeInsets.all(5),
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(6.w),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,15 +170,15 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
                       Text(
                         recipeName,
                         style: TextStyle(
-                          color: Colors.deepOrange,
-                          fontSize: 22,
+                          color: Theme.of(context).backgroundColor,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 1.h),
                       Text(
                         'Tap to view recipe',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10.sp),
                       ),
                     ],
                   ),
@@ -126,32 +189,25 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
         );
       });
     }
+
     return eventWidgets;
   }
 
-// Method to remove a recipe from the calendar
+  // Remove a recipe from the calendar
   Future<void> _removeRecipeFromCalendar(DateTime date, String recipeName) async {
-    // Remove the recipe from the _events map
-    if (_events.containsKey(date)) {
-      _events[date]!.remove(recipeName);
-      if (_events[date]!.isEmpty) {
-        _events.remove(date); // Remove the date entry if it has no more recipes
+    if (_events.containsKey(date)) { // Checks if the _events map contains the specified date as a key
+      _events[date]!.remove(recipeName); // If the date exists, it removes the recipeName from the list of recipes for that date
+      if (_events[date]!.isEmpty) { // After removing the recipe, it checks if the list of recipes for that date is empty
+        _events.remove(date); // If it is empty, it removes the date entry from the _events map entirely
       }
     }
-
-    // Call the removeRecipe method from MealPlanningRecipePreferences to remove the recipe from the calendar
-    await MealPlanningRecipePreferences.removeRecipe(date, recipeName);
-
-    // Refresh the events by calling _getSavedEvents
-    _getSavedEvents();
-
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      await MealPlanningRecipePreferences.removeRecipe(date, recipeName, user.uid); // Remove from preferences
+    }
     _showToast('Recipe removed successfully');
-
-    // Force rebuild the widget tree to reflect the changes
-    setState(() {});
+    setState(() {}); // Update state to reflect changes
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -160,20 +216,22 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
+          leading: widget.showLeadingArrow
+              ? IconButton(
             icon: Icon(
               Icons.arrow_back,
-              color: Colors.amber.shade900,
-              size: 40,
+              color: Theme.of(context).primaryColor,
+              size: 5.h,
             ),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Navigate back
             },
-          ),
+          )
+              : null,
           title: Text(
             "Meal Planning",
             style: TextStyle(
-              fontSize: 35,
+              fontSize: 25.sp,
               color: Theme.of(context).primaryColor,
               fontFamily: "fonts/Raleway-Bold",
             ),
@@ -182,26 +240,29 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
         body: Column(
           children: [
             TableCalendar(
+              key: UniqueKey(),
               firstDay: DateTime.utc(2024, 1, 1),
               lastDay: DateTime.utc(2040, 12, 31),
               focusedDay: _focusedDay,
               calendarFormat: _calendarFormat,
               selectedDayPredicate: (day) {
-                return isSameDay(_selectedDay, day);
+                return isSameDay(_selectedDay, day); // Highlight the selected day
               },
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
-                _addRecipeToCalendar(selectedDay, widget.recipeName!);
+                if (_userProvider.userName != "Guest User") {
+                  _addRecipeToCalendar(selectedDay, widget.recipeName!); // Add recipe to selected day
+                }
               },
               eventLoader: (date) {
-                return _buildEventsForDay(date);
+                return _buildEventsForDay(date); // Load events for the day
               },
               calendarStyle: CalendarStyle(
                 selectedDecoration: BoxDecoration(
-                  color: Colors.deepOrange,
+                  color: Theme.of(context).backgroundColor,
                   shape: BoxShape.circle,
                 ),
                 todayDecoration: BoxDecoration(
@@ -212,192 +273,25 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
               ),
               onFormatChanged: (format) {
                 setState(() {
-                  _calendarFormat = format;
+                  _calendarFormat = format; // Change calendar format
                 });
               },
               onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
+                _focusedDay = focusedDay; // Change focused day on page change
               },
             ),
-            SizedBox(height:20),
+            SizedBox(height: 2.h),
             Expanded(
               child: ListView(
-                children: _selectedDay != null ? _buildEventsForDay(_selectedDay!) : [],
+                children: _selectedDay != null
+                    ? _buildEventsForDay(_selectedDay!) // Display events for the selected day
+                    : [],
               ),
             ),
+            SizedBox(height: 5.h),
           ],
         ),
       ),
     );
   }
 }
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-//
-// import 'package:flutter/material.dart';
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-// import 'package:table_calendar/table_calendar.dart';
-// import 'package:timezone/timezone.dart' as tz;
-// import 'package:timezone/data/latest.dart' as tz;
-//
-// class MealPlanningScreen extends StatefulWidget {
-//   final String? recipeName; // Add recipeName parameter
-//   MealPlanningScreen({Key? key, this.recipeName}) : super(key: key);
-//
-//   @override
-//   _MealPlanningScreenState createState() => _MealPlanningScreenState();
-// }
-//
-// class _MealPlanningScreenState extends State<MealPlanningScreen> {
-//   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-//   CalendarFormat _calendarFormat = CalendarFormat.month;
-//   DateTime _focusedDay = DateTime.now();
-//   DateTime? _selectedDay;
-//   Map<DateTime, List<String>> _events = {}; // Events map to store recipe names for each date
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-//     tz.initializeTimeZones(); // Initialize timezones for notification scheduling
-//     // Initialize other components and load saved events
-//     _getSavedEvents();
-//   }
-//
-//   Future<void> _addRecipeToCalendar(
-//       DateTime selectedDate, String recipeName) async {
-//     // Check if the recipe is already present for the selected date
-//     if (_events.containsKey(selectedDate) &&
-//         _events[selectedDate]!.contains(recipeName)) {
-//       _showToast('Recipe already added for this date');
-//       return;
-//     }
-//
-//     // Call the addRecipe method from MealPlanningRecipePreferences to save the recipe to the calendar
-//     //await MealPlanningRecipePreferences.addRecipe(selectedDate, recipeName);
-//
-//     // Refresh the events by calling _getSavedEvents
-//     //_getSavedEvents();
-//
-//     // Schedule reminder notification
-//     DateTime notificationTime =
-//     selectedDate.subtract(Duration(hours: 1)); // Example: Send reminder 1 hour before the meal
-//     await flutterLocalNotificationsPlugin.zonedSchedule(
-//       0, // Unique notification id
-//       'Reminder: $recipeName', // Notification title
-//       'Don\'t forget to prepare $recipeName for your meal!', // Notification body
-//       tz.TZDateTime.from(notificationTime, tz.local), // Notification time
-//       NotificationDetails(
-//         android: AndroidNotificationDetails(
-//           'high_importance_channel', // Your channel id
-//           'High Importance Notifications', // Your channel name
-//           'This channel is used for high importance notifications.', // Channel description
-//           importance: Importance.high,
-//           priority: Priority.high,
-//           playSound: true,
-//           enableVibration: true,
-//           icon: '@mipmap/ic_launcher',
-//           styleInformation: BigTextStyleInformation(''), // Add a style information
-//         ),
-//       ),
-//       androidAllowWhileIdle: true,
-//       uiLocalNotificationDateInterpretation:
-//       UILocalNotificationDateInterpretation.absoluteTime,
-//       matchDateTimeComponents: DateTimeComponents.time,
-//     );
-//
-//
-//
-//
-//     _showToast('Recipe added successfully with reminder');
-//   }
-//
-//   void _showToast(String message) {
-//     // Your showToast implementation
-//   }
-//
-//   Future<void> _getSavedEvents() async {
-//     // Your implementation to load saved events
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: Colors.transparent,
-//         elevation: 0,
-//         leading: IconButton(
-//           icon: Icon(
-//             Icons.arrow_back,
-//             color: Colors.amber.shade900,
-//             size: 40,
-//           ),
-//           onPressed: () {
-//             Navigator.pop(context);
-//           },
-//         ),
-//         title: Text(
-//           "Meal Planning",
-//           style: TextStyle(
-//             fontSize: 35,
-//             color: Theme.of(context).primaryColor,
-//             fontFamily: "fonts/Raleway-Bold",
-//           ),
-//         ),
-//       ),
-//       body: Column(
-//         children: [
-//           TableCalendar(
-//             firstDay: DateTime.utc(2024, 1, 1),
-//             lastDay: DateTime.utc(2040, 12, 31),
-//             focusedDay: _focusedDay,
-//             calendarFormat: _calendarFormat,
-//             selectedDayPredicate: (day) {
-//               return isSameDay(_selectedDay, day);
-//             },
-//             onDaySelected: (selectedDay, focusedDay) {
-//               setState(() {
-//                 _selectedDay = selectedDay;
-//                 _focusedDay = focusedDay;
-//               });
-//               _addRecipeToCalendar(selectedDay, widget.recipeName!);
-//             },
-//             eventLoader: (date) {
-//               return _buildEventsForDay(date);
-//             },
-//             calendarStyle: CalendarStyle(
-//               selectedDecoration: BoxDecoration(
-//                 color: Colors.deepOrange,
-//                 shape: BoxShape.circle,
-//               ),
-//               todayDecoration: BoxDecoration(
-//                 color: Colors.grey[800],
-//                 shape: BoxShape.circle,
-//               ),
-//               markersMaxCount: 4,
-//             ),
-//             onFormatChanged: (format) {
-//               setState(() {
-//                 _calendarFormat = format;
-//               });
-//             },
-//             onPageChanged: (focusedDay) {
-//               _focusedDay = focusedDay;
-//             },
-//           ),
-//           SizedBox(height: 20),
-//           Expanded(
-//             child: ListView(
-//               children:
-//               _selectedDay != null ? _buildEventsForDay(_selectedDay!) : [],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   List<Widget> _buildEventsForDay(DateTime date) {
-//     // Your implementation to build events for a day
-//     return [];
-//   }
-// }

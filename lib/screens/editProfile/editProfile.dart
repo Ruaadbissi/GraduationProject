@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
 import 'package:provider/provider.dart';
+import 'package:oktoast/oktoast.dart';
+import 'package:sizer/sizer.dart';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({Key? key}) : super(key: key);
@@ -12,39 +14,77 @@ class EditProfile extends StatefulWidget {
 }
 
 class _EditProfileState extends State<EditProfile> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  late TextEditingController _nameController;
-  TextEditingController _passwordController = TextEditingController();
-  bool _isPassObscure = true;
+  final FirebaseAuth _auth = FirebaseAuth.instance; // Firebase authentication instance
+  late TextEditingController _nameController; // Controller for the name input field
+  TextEditingController _passwordController = TextEditingController(); // Controller for the password input field
+  bool _isPassObscure = true; // Toggle for password visibility
+
+  void _showToast(String message) {
+    // Function to show a toast notification
+    showToast(
+      message,
+      duration: Duration(seconds: 2),
+      position: ToastPosition.bottom,
+      backgroundColor: Colors.amber.shade900,
+      radius: 8.0,
+      textStyle: TextStyle(fontSize: 16.0, color: Colors.black),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    fetchUserData();
+    _nameController = TextEditingController(); // Initializing the name controller
+    fetchUserData(); // Fetching user data on initialization
   }
 
   Future<void> fetchUserData() async {
+    // Fetches the username from UserProvider and sets it to the _nameController
     UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
     await userProvider.fetchUserName();
     _nameController.text = userProvider.userName;
   }
 
   Future<void> _updateProfile() async {
+    // Function to update the user profile
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(5.w),
+          ),
+          backgroundColor: Theme.of(context).canvasColor,
+          content: Row(
+            children: [
+              CircularProgressIndicator( color: Theme.of(context).backgroundColor,),
+              SizedBox(width: 20),
+              Text("Updating Profile...",
+                style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10.sp
+                ),),
+            ],
+          ),
+        );
+      },
+    );
+
     try {
-      User? user = _auth.currentUser;
+      User? user = _auth.currentUser; // Get the current user
       if (user != null) {
         if (_nameController.text.isNotEmpty &&
             _passwordController.text.isNotEmpty &&
             _passwordController.text.length >= 5) {
-          await user.updateProfile(displayName: _nameController.text);
+          await user.updateProfile(displayName: _nameController.text); // Update user display name
 
-          // Update password if provided
           if (_passwordController.text.isNotEmpty) {
-            await user.updatePassword(_passwordController.text);
+            await user.updatePassword(_passwordController.text); // Update user password
           }
 
-          // Update Firestore document with new data based on user's email
+          // Update Firestore database
           await FirebaseFirestore.instance
               .collection('Users')
               .where('Email', isEqualTo: user.email)
@@ -58,39 +98,21 @@ class _EditProfileState extends State<EditProfile> {
                   .update({
                 'UserName': _nameController.text,
               });
-              // Refresh user data in the CustomDrawer
-              Provider.of<UserProvider>(context, listen: false).fetchUserName();
+              Provider.of<UserProvider>(context, listen: false).fetchUserName(); // Refresh the username in the provider
             }
           });
 
-          // Handle success
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Profile updated successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // Pop the page from the navigation stack
-          Navigator.pop(context);
+          Navigator.pop(context); // Close the loading dialog
+          _showToast('Profile updated successfully');
+          Navigator.pop(context); // Pop the page from the navigation stack
         } else {
-          // Handle incomplete fields or invalid password
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Please fill all fields and ensure the password is at least 5 characters long'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          Navigator.pop(context); // Close the loading dialog
+          _showToast('Please fill all fields and ensure the password is at least 5 characters long');
         }
       }
     } catch (error) {
-      // Handle error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating profile: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      Navigator.pop(context); // Close the loading dialog
+      _showToast('Error updating profile: $error');
     }
   }
 
@@ -104,7 +126,7 @@ class _EditProfileState extends State<EditProfile> {
         title: Text(
           'Edit Profile',
           style: TextStyle(
-            fontSize: 35,
+            fontSize: 25.sp,
             color: Theme.of(context).primaryColor,
             fontFamily: "fonts/Raleway-Bold",
           ),
@@ -113,7 +135,7 @@ class _EditProfileState extends State<EditProfile> {
           icon: Icon(
             Icons.arrow_back,
             color: Theme.of(context).primaryColor,
-            size: 40,
+            size: 5.h,
           ),
           onPressed: () {
             Navigator.pop(context);
@@ -142,52 +164,52 @@ class _EditProfileState extends State<EditProfile> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            SizedBox(height: 25),
+                            SizedBox(height: 5.h),
                             _buildTextField(
                               controller: _nameController,
                               label: 'Username',
                               color: Theme.of(context).primaryColor,
-                              fontSize: 20,
+                              fontSize: 15.sp,
                             ),
                             _buildTextField(
                               controller: _passwordController,
                               label: 'Password',
                               color: Theme.of(context).primaryColor,
-                              fontSize: 20,
+                              fontSize: 15.sp,
                               isObscure: _isPassObscure,
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _isPassObscure
                                       ? Icons.visibility
                                       : Icons.visibility_off,
-                                  color: Colors.amber.shade900,
+                                  color: Theme.of(context).backgroundColor,
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    _isPassObscure = !_isPassObscure;
+                                    _isPassObscure = !_isPassObscure; // Toggle password visibility
                                   });
                                 },
                               ),
                             ),
-                            SizedBox(height: 25),
+                            SizedBox(height: 3.h),
                             ElevatedButton(
                               onPressed: () {
-                                _updateProfile();
+                                _updateProfile(); // Trigger profile update
                               },
                               child: Text(
                                 'Update your Profile',
                                 style: TextStyle(
                                   color: Theme.of(context).primaryColor,
-                                  fontSize: 20,
+                                  fontSize: 15.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
-                                primary: Colors.amber.shade900,
+                                primary: Theme.of(context).backgroundColor,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(7.w),
                                 ),
-                                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                                padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 2.h),
                               ),
                             ),
                           ],
@@ -213,7 +235,7 @@ class _EditProfileState extends State<EditProfile> {
     IconButton? suffixIcon,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+      padding:  EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -227,13 +249,13 @@ class _EditProfileState extends State<EditProfile> {
           ),
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.amber.shade900, width: 2),
-              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Theme.of(context).backgroundColor, width: 2),
+              borderRadius: BorderRadius.circular(8.w),
               color: Colors.grey.withOpacity(0.1),
             ),
             child: TextField(
               controller: controller,
-              obscureText: isObscure,
+              obscureText: isObscure, // Password obscurity toggle
               style: TextStyle(
                 color: color,
                 fontSize: fontSize,
@@ -243,7 +265,7 @@ class _EditProfileState extends State<EditProfile> {
                 suffixIcon: suffixIcon != null
                     ? GestureDetector(
                   onTap: suffixIcon.onPressed,
-                  child: suffixIcon.icon,
+                  child: suffixIcon.icon, // Suffix icon for the text field
                 )
                     : null,
               ),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
+import 'package:magic_cook1/screens/detailsScreen/detailsScreen.dart';
+import 'package:magic_cook1/screens/utils/helper/favorite/favoriteWidget.dart';
 import 'dart:convert';
 
-import '../detailsScreen/detailsScreen.dart';
-import '../homeScreen/homeScreen.dart';
-import '../utils/helper/favProvider.dart';
-import '../utils/ui/search/search-api.dart';
+import 'package:sizer/sizer.dart';
+
 
 class RecipeListScreen extends StatefulWidget {
   final String category;
@@ -53,12 +52,22 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     return [];
   }
 
-  Future<void> _searchRecipes(String query) async {
+  Future<void> _searchRecipes(String query) async{
     setState(() {
-      _recipeListFuture = RecipeSearch.searchRecipes(query);
+      _recipeListFuture = fetchRecipesByCategory(widget.category)
+          .then((recipes) => _filterRecipes(recipes, query));
     });
   }
 
+  List<dynamic> _filterRecipes(List<dynamic> recipes, String query) {
+    if (query.isEmpty) {
+      return recipes; // Return all recipes if the query is empty
+    } else {
+      // Filter recipes based on search query
+      return recipes.where((recipe) =>
+          recipe['strMeal'].toLowerCase().contains(query.toLowerCase())).toList();
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,8 +78,8 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back,
-            color: Colors.white,
-            size: 40,
+            color: Theme.of(context).primaryColor,
+            size: 5.h,
           ),
           onPressed: () {
             Navigator.pop(context);
@@ -78,23 +87,21 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
         ),
         title: SizedBox(
           width: MediaQuery.of(context).size.width * 0.8,
-          child:  SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Theme.of(context).primaryColor,),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: TextField(
-                  onChanged: _searchRecipes, // Call _searchRecipes on change
-                  decoration: InputDecoration(
-                    hintText: 'Search for recipe',
-                    hintStyle: TextStyle(color: Colors.white70),
-                    prefixIcon: Icon(Icons.search, color: Colors.white70),
-                  ),
+          child:  Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).shadowColor,
+              borderRadius: BorderRadius.circular(9.h),
+              border: Border.all(color: Theme.of(context).primaryColor,),
+            ),
+            child: Padding(
+              padding:  EdgeInsets.symmetric(horizontal: 1.w),
+              child: TextField(
+                onChanged: _searchRecipes,
+                decoration: InputDecoration(
+                  hintText: 'Search for recipe',
+                  hintStyle: TextStyle(color: Theme.of(context).hintColor,fontSize: 15.sp),
+                  prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor,size: 4.h),
+                  border: InputBorder.none,
                 ),
               ),
             ),
@@ -104,7 +111,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            SizedBox(height: 20),
+            SizedBox(height: 2.h),
             Expanded(
               child: FutureBuilder<List<dynamic>>(
                 future: _recipeListFuture,
@@ -112,33 +119,45 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
                       child: CircularProgressIndicator(
-                        color: Colors.deepOrange,
+                        color: Theme.of(context).backgroundColor,
                       ),
                     );
                   } else if (snapshot.hasError) {
                     return Center(
                       child: Text(
                         'Error: ${snapshot.error}',
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(color: Theme.of(context).backgroundColor,),
                       ),
                     );
                   } else {
-                    return GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                      ),
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        final recipe = snapshot.data![index];
-                        return buildRecipeCard(context, recipe);
-                      },
-                    );
+                    final List<dynamic> recipes = snapshot.data ?? [];
+                    if (recipes.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No recipes found.',
+                          style: TextStyle(color: Theme.of(context).backgroundColor,),
+                        ),
+                      );
+                    } else {
+                      return GridView.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemCount: recipes.length,
+                        itemBuilder: (context, index) {
+                          final recipe = recipes[index];
+                          return buildRecipeCard(context, recipe);
+                        },
+                      );
+                    }
                   }
                 },
               ),
             ),
+            SizedBox(height: 4.h),
+
           ],
         ),
       ),
@@ -160,9 +179,9 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
       },
       child: Card(
         elevation: 4,
-        margin: EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        margin: EdgeInsets.symmetric(horizontal: 1.w, vertical: 1.w),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(3.w),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,49 +190,50 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
               flex: 2,
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
+                  topLeft: Radius.circular(3.w),
+                  topRight: Radius.circular(3.w),
                 ),
                 child: recipe['strMealThumb'] != null
                     ? Image.network(
                   recipe['strMealThumb'],
                   fit: BoxFit.cover,
+                  height: 14.h,
                 )
                     : Placeholder(),
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 1.h),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 1.w),
               child: Text(
                 recipe['strMeal'],
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepOrange,
+                  color: Theme.of(context).backgroundColor,
                 ),
-                maxLines: 2,
+                maxLines:1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            SizedBox(height: 4),
+            SizedBox(height: 1.h),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 1.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     '${recipe['strArea']} food',
                     style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                      fontSize: 12.sp,
                     ),
                   ),
-                  FavoriteWidget(recipeId: recipe['idMeal'])
+                  FavoriteWidget(recipeId: recipe['idMeal'],recipeName: recipe['strMeal'],)
                 ],
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 2.h),
           ],
         ),
       ),

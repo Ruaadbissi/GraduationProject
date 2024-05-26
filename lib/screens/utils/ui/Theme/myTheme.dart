@@ -19,17 +19,21 @@ class MyTheme{
     colorScheme: ColorScheme.dark(),
     bottomAppBarColor: Color(0xFF282626),
     shadowColor: Colors.black.withOpacity(0.6),
-    cardColor: Color(0xFF373535),
+    cardColor:  Color(0xFF282626),
     canvasColor: Color(0xFF7B7B7B),
+    backgroundColor: Colors.amber.shade900,
+    hintColor: Color(0xABC4BFBF),
+
   );
   static final lightTheme=ThemeData(
-    scaffoldBackgroundColor:Colors.white,
-    primaryColor: Colors.black,
+    scaffoldBackgroundColor: Color(0xFFE7E6E4),
+    primaryColor:Colors.black,
     colorScheme: ColorScheme.light(),
-    bottomAppBarColor: Color(0xFF504E4E),
-    shadowColor: Colors.grey.withOpacity(0.5),
-    cardColor: Colors.grey,
-    canvasColor: Color(0xFF282626),
-
+    bottomAppBarColor: Color(0xFFBEB7AC),
+    shadowColor: Colors.grey.withOpacity(0.2),
+    cardColor: Color(0xABC4BFBF),
+    canvasColor: Color(0xFFC4BFBF),
+    backgroundColor: Colors.amber.shade900,
+    hintColor: Color(0xFF282626),
   );
 }

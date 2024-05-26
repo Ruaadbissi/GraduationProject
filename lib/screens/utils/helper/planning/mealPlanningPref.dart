@@ -1,27 +1,19 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
+// Class for managing meal planning recipe preferences
 class MealPlanningRecipePreferences {
-  static const _keyRecipeName = 'mealPlanningRecipeName';
-  static const _keyEvents = 'mealPlanningEvents';
+  // Prefix for storing events in SharedPreferences
+  static const _keyEventsPrefix = 'mealPlanningEvents';
 
-  // Retrieve the recipe name from shared preferences
-  static Future<String?> getRecipeName() async {
+  // Method to get meal planning events from SharedPreferences
+  static Future<Map<DateTime, List<String>>> getEvents(String uid) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyRecipeName);
-  }
-
-  // Save the recipe name to shared preferences
-  static Future<void> saveRecipeName(String recipeName) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRecipeName, recipeName);
-  }
-
-  // Retrieve the events map from shared preferences
-  static Future<Map<DateTime, List<String>>> getEvents() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? eventsString = prefs.getString(_keyEvents);
+    String? eventsString = prefs.getString('$_keyEventsPrefix-$uid');
     Map<DateTime, List<String>> events = {};
+
     if (eventsString != null && eventsString.isNotEmpty) {
       Map<String, dynamic> eventsMap = jsonDecode(eventsString);
       eventsMap.forEach((key, value) {
@@ -33,28 +25,76 @@ class MealPlanningRecipePreferences {
     return events;
   }
 
-  // Save the events map to shared preferences
-  static Future<void> saveEvents(Map<DateTime, List<String>> events) async {
+  // Method to save meal planning events to SharedPreferences and Firestore
+  static Future<void> saveEvents(Map<DateTime, List<String>> events, String uid) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> eventsMap = {};
     events.forEach((key, value) {
-      eventsMap[key.toString()] = value;
+      eventsMap[key.toIso8601String()] = value;
     });
     String eventsString = jsonEncode(eventsMap);
-    await prefs.setString(_keyEvents, eventsString);
+    await prefs.setString('$_keyEventsPrefix-$uid', eventsString);
+
+    await _updateFirestoreEvents(events, uid);
   }
 
-  // Add a recipe to a specific date
-  static Future<void> addRecipe(DateTime date, String recipeName) async {
-    Map<DateTime, List<String>> events = await getEvents();
-    events.update(date, (recipes) => [...recipes, recipeName], ifAbsent: () => [recipeName]);
-    await saveEvents(events);
+  // Method to update Firestore with meal planning events
+  static Future<void> _updateFirestoreEvents(Map<DateTime, List<String>> events, String uid) async {
+    try {
+      List<Map<String, dynamic>> eventData = [];
+      events.forEach((date, recipes) {
+        String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+        recipes.forEach((recipeName) {
+          eventData.add({'recipeName': recipeName, 'date': formattedDate});
+        });
+      });
+
+      // Update Firestore with the meal planning events data
+      await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(uid)
+          .collection("mealPlanning")
+          .doc('plans')
+          .set({'recipes': eventData}, SetOptions(merge: true));
+    } catch (error) {
+      print("Error updating Firestore events: $error");
+    }
   }
 
-  // Remove a recipe from a specific date
-  static Future<void> removeRecipe(DateTime date, String recipeName) async {
-    Map<DateTime, List<String>> events = await getEvents();
-    events.update(date, (recipes) => recipes..remove(recipeName), ifAbsent: () => []);
-    await saveEvents(events);
+  // Method to add a recipe to a specific date in the meal planning events
+  static Future<void> addRecipe(DateTime date, String recipeName, String uid) async {
+    Map<DateTime, List<String>> events = await getEvents(uid);
+    if (events.containsKey(date) && !events[date]!.contains(recipeName)) {
+      events[date]!.add(recipeName);
+    } else if (!events.containsKey(date)) {
+      events[date] = [recipeName];
+    }
+    await saveEvents(events, uid);
+  }
+
+  // Method to remove a recipe from a specific date in the meal planning events
+  static Future<void> removeRecipe(DateTime date, String recipeName, String uid) async {
+    Map<DateTime, List<String>> events = await getEvents(uid);
+    if (events.containsKey(date)) {
+      events[date]!.remove(recipeName);
+      if (events[date]!.isEmpty) {
+        events.remove(date);
+      }
+    }
+    await saveEvents(events, uid);
+  }
+
+  // Method to clear the meal planning calendar
+  static Future<void> clearCalendar(String uid) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_keyEventsPrefix-$uid');
+
+    // Delete the meal planning document from Firestore
+    await FirebaseFirestore.instance
+        .collection("Users")
+        .doc(uid)
+        .collection("mealPlanning")
+        .doc('plans')
+        .delete();
   }
 }

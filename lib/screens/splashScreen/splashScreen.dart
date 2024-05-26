@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:magic_cook1/screens/login/login.dart';
-import 'package:magic_cook1/screens/register/register.dart';
 import 'package:magic_cook1/screens/slider/slider.dart';
-
 
 class splashScreen extends StatefulWidget {
   @override
@@ -17,7 +14,7 @@ class _splashScreenState extends State<splashScreen> {
   void initState() {
     super.initState();
     Timer(
-     const Duration(seconds: 4),
+      const Duration(seconds: 4),
           () {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => sliderScreen()),

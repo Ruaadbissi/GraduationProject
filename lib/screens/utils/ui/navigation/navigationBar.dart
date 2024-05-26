@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:magic_cook1/screens/faviourtPage/favoriteScreen.dart';
 import 'package:magic_cook1/screens/homeScreen/homeScreen.dart';
+import 'package:magic_cook1/screens/mealPlanning/mealPlanning.dart';
 import 'package:magic_cook1/screens/shoppingList/shoppingList.dart';
 import 'package:magic_cook1/screens/utils/helper/model.dart';
-
 import 'package:persistent_bottom_nav_bar/persistent_tab_view.dart';
-
-import '../../../mealPlanning/mealPlanning.dart';
 
 
 class navigationBar extends StatefulWidget {

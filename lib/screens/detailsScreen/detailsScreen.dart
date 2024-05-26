@@ -1,17 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:magic_cook1/screens/mealPlanning/mealPlanning.dart';
-import 'package:magic_cook1/screens/utils/helper/planning/mealPlanningPref.dart';
 import 'package:magic_cook1/screens/utils/helper/shoppingList/shoppingProvider.dart';
-import 'package:magic_cook1/screens/utils/helper/shoppingList/shopping_list_manager.dart';
 import 'package:magic_cook1/screens/utils/helper/userProvider.dart';
 import 'package:provider/provider.dart';
+import 'package:sizer/sizer.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
-
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,6 +26,7 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
   late ShoppingListManager _shoppingListManager;
   final PanelController _panelController = PanelController();
   late Map<String, dynamic> _details = {};
+  late UserProvider _userProvider;
 
   @override
   void initState() {
@@ -43,6 +40,11 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
     await _shoppingListManager.init();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userProvider = Provider.of<UserProvider>(context);
+  }
   Future<void> _fetchDetails() async {
     try {
       final encodedRecipeName = Uri.encodeComponent(widget.recipeName);
@@ -64,10 +66,45 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
   }
 
   void updateCartState() {
-    // Update the state of the cart icon
     setState(() {
-      // Update the state based on whether the ingredient is in the shopping list
     });
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(5.w),
+          ),
+          backgroundColor: Theme.of(context).canvasColor,
+          title: Text(
+            'You need to be logged in to add recipe to your meal planning.',
+            style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp
+
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 10.sp,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 
@@ -76,21 +113,23 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Stack(
-          children: [
-            _buildContent(),
-            SlidingUpPanel(
-              controller: _panelController,
-              minHeight: 0,
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-              panel: _buildInstructionsPanel(),
-              borderRadius:const BorderRadius.only(
-                topLeft: Radius.circular(33),
-                topRight: Radius.circular(33),
+        child: SingleChildScrollView(
+          child: Stack(
+            children: [
+              _buildContent(),
+              SlidingUpPanel(
+                controller: _panelController,
+                minHeight: 0,
+                maxHeight: MediaQuery.of(context).size.height ,
+                panel: _buildInstructionsPanel(),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10.w),
+                  topRight: Radius.circular(10.w),
+                ),
+                color: Theme.of(context).canvasColor,
               ),
-              color: Color(0xFF1C1818),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -108,20 +147,20 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
               decoration: BoxDecoration(
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Theme.of(context).shadowColor,
                     blurRadius: 10,
                     offset: Offset(0, 3),
                   ),
                 ],
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(100),
-                  bottomRight: Radius.circular(100),
+                  bottomLeft: Radius.circular(10.w),
+                  bottomRight: Radius.circular(10.w),
                 ),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(10.w),
+                  bottomRight: Radius.circular(10.w),
                 ),
                 child: Image.network(
                   _details['strMealThumb'] ?? '',
@@ -144,24 +183,25 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
             ),
             Positioned(
               top: MediaQuery.of(context).size.height * 0.18,
-              left: 20,
+              left: 4.w,
+              right: 4.w,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _details['strMeal'] ?? '',
                     style: TextStyle(
-                      fontSize: 26,
-                      color: Theme.of(context).primaryColor,
+                      fontSize: 17.sp,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 6),
+
                   Text(
                     '${_details['strArea']} food',
                     style: TextStyle(
-                      fontSize: 20,
-                      color: Theme.of(context).primaryColor,
+                      fontSize: 14.sp,
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -169,12 +209,12 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
             ),
             Positioned(
               top: 0,
-              left: 12,
+              left: 2.w,
               child: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: Colors.white,
-                  size: 40,
+                  color: Theme.of(context).primaryColor,
+                  size: 5.h,
                 ),
                 onPressed: () {
                   Navigator.pop(context);
@@ -183,97 +223,136 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
             ),
           ],
         ),
-        SizedBox(height: 16),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align items at the ends
-                    children: [
-                      FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance.collection('details').doc(widget.recipeName).get(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return CircularProgressIndicator();
-                          } else if (snapshot.hasError) {
-                            return Text('Error: ${snapshot.error}');
-                          } else if (snapshot.hasData) {
-                            if (snapshot.data!.exists) {
-                              String timer = snapshot.data!['timer'] ?? 0;
-                              return
-                                Text(
-                                  'Timer: ${timer.toString()} ',
-                                  style: TextStyle(
-
-                                    fontSize: 16,
-
-                                    color: Colors.amber.shade900,
-                                  ),
-                                );
-
-
-                            } else {
-                              return Text('Timer information not available');
-                            }
-                          }
-                          return Text('No data available');
-                        },
-                      ),
-                      // Add Recipe to Calendar button
-                      IconButton(
-                        icon: Icon(
-                          Icons.calendar_month,
-                          color: Colors.amber.shade900,
-                          size: 32,
+        SizedBox(height:1.h),
+        Padding(
+          padding:  EdgeInsets.only(left: 4.w,right:4.w),
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children:[
+                Row(
+                    children:[
+                      Container(
+                        height: 5.h,
+                        width: 10.w,
+                        decoration: BoxDecoration(
+                          color:Theme.of(context).backgroundColor,
+                          shape: BoxShape.circle,
                         ),
-                        onPressed: () async {
-                          String recipeName = widget.recipeName; // Get the recipe name
-                          await MealPlanningRecipePreferences.saveRecipeName(recipeName); // Save the recipe name
+                        child: Icon(Icons.link,
+                          size: 6.w,
+                          color:Theme.of(context).scaffoldBackgroundColor,
+
+                        ),
+                      ),
+                      SizedBox(width:1.w),
+                      GestureDetector(
+                        onTap: () {
+                          String videoLink = _details['strYoutube'] ?? '';
+                          if (videoLink.isNotEmpty) {
+                            launch(videoLink);
+                          } else {
+                            // Handle case where video link is not available
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Video Not Available'),
+                                content: Text('Sorry, no video instructions are available for this recipe.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Watch Recipe Video',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color:Theme.of(context).backgroundColor,
+
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]
+                ),
+                IconButton(
+                  icon: Container(
+                    height: 5.h,
+                    width: 10.w,
+                    decoration: BoxDecoration(
+                      color:Theme.of(context).backgroundColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.calendar_month,
+                      color:Theme.of(context).scaffoldBackgroundColor,
+                      size: 6.w,
+                    ),
+                  ),
+                  onPressed: () async {
+                    final User? user = FirebaseAuth.instance.currentUser;
+                    if (user != null) {
+                      if (_userProvider.userName == "Guest User") {
+                        _showLoginRequiredDialog(context);
+                      } else {
+                        String recipeName = widget.recipeName ?? '';
+                        if (recipeName.isNotEmpty) {
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(5.w),
                                 ),
-                                backgroundColor: Theme.of(context).cardColor,
-                                title: Text('Do you want to add this recipe to your meal planning?'),
+                                backgroundColor: Theme.of(context).canvasColor,
+                                title: Text(
+                                  'Do you want to add this recipe to your meal planning?',
+                                  style: TextStyle(
+                                      color: Theme.of(context).primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14.sp
+
+                                  ),),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
-                                      Navigator.pop(context); // Close dialog
+                                      Navigator.pop(context);
                                     },
                                     child: Text(
                                       'No',
                                       style: TextStyle(
-                                        color: Theme.of(context).primaryColor,
-                                        fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10.sp
                                       ),
                                     ),
                                   ),
                                   TextButton(
                                     onPressed: () async {
-                                      String recipeName = widget.recipeName; // Get the recipe name
-                                      await MealPlanningRecipePreferences.saveRecipeName(recipeName); // Save the recipe name
                                       Navigator.pop(context); // Close dialog
+                                      // Navigate to the calendar screen to choose the date and save the recipe
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => MealPlanningScreen(recipeName: widget.recipeName),
+                                          builder: (context) => MealPlanningScreen(
+                                            recipeName: recipeName,
+                                            showLeadingArrow: true,
+                                          ),
                                         ),
                                       );
-
                                     },
-
                                     child: Text(
                                       'Yes',
                                       style: TextStyle(
-                                        color: Theme.of(context).primaryColor,
-                                        fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10.sp
                                       ),
                                     ),
                                   ),
@@ -281,208 +360,110 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
                               );
                             },
                           );
-                        },
-                      ),
-
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      String videoLink = _details['strYoutube'] ?? '';
-                      if (videoLink.isNotEmpty) {
-                        launch(videoLink); // Assuming you're using the url_launcher package
-                      } else {
-                        // Handle case where video link is not available
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text('Video Not Available'),
-                            content: Text('Sorry, no video instructions are available for this recipe.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Watch the Instructions Video',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.amber.shade900,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align items at the ends
-                        children: [
-                          Container(
-                            width: 150,
-                            height: 45,
-                            padding: EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade900,
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child:
-                            Center(
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'Ingredients',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).scaffoldBackgroundColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 110,
-                            height: 45,
-                            padding: EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade900,
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child:
-                            Center(
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'Add ingredient\nto cart',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).scaffoldBackgroundColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      if (_details['strIngredient1'] != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (int i = 1; i <= 30; i++)
-                              if (_details['strIngredient$i'] != null && _details['strIngredient$i'] != '')
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                  child: Container(
-                                      child: IngredientItem(
-                                        name: '${_details['strMeasure$i']} ${_details['strIngredient$i']}',
-                                        recipeName: '',
-                                        ingredient: _details['strIngredient$i'],
-                                        imageUrl: 'https://www.themealdb.com/images/ingredients/${_details['strIngredient$i'].toLowerCase()}.png',
-                                        updateCartState: updateCartState,
-                                      )
-                                  ),
-                                ),
-                          ],
-                        ),
-
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance.collection('details').doc(widget.recipeName).get(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return CircularProgressIndicator();
-                      } else if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      } else if (snapshot.hasData) {
-                        if (snapshot.data!.exists) {
-                          Map<String, dynamic> nutritionInfo = snapshot.data!['utrition_info'] ?? {};
-                          return Card(
-                            elevation: 4, // Add elevation for a shadow effect
-                            margin: EdgeInsets.all(10), // Add margin around the card
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    'Nutrition Information',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.amber.shade900, // Adjust text color as needed
-                                    ),
-                                  ),
-                                ),
-                                Divider(), // Add a divider for separation
-                                // Use ListView to display nutrition details
-                                ListView(
-                                  shrinkWrap: true,
-                                  physics: NeverScrollableScrollPhysics(),
-                                  children: nutritionInfo.entries.map((entry) {
-                                    return ListTile(
-                                      title: Text(
-                                        '${entry.key}: ${entry.value}',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.white, // Adjust text color as needed
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return Text('Nutrition information not available');
                         }
                       }
-                      return Text('No data available');
-                    },
-                  ),
-
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _panelController.open();
-                      },
-                      child: Text(
-                        'View Instructions',
-                        style: TextStyle(
-                          color:Theme.of(context).scaffoldBackgroundColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        primary: Colors.amber.shade900,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      ),
+                    } else {
+                      _showLoginRequiredDialog(context);
+                    }
+                  },
+                )
+              ]
+          ),
+        ),
+        Padding(
+          padding:  EdgeInsets.only(left: 4.w,right:4.w,top:3.w),
+          child: Container(
+            width: double.infinity,
+            height: 6.h,
+            decoration: BoxDecoration(
+              color:Theme.of(context).backgroundColor,
+              borderRadius: BorderRadius.circular(4.w),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Padding(
+                  padding:  EdgeInsets.only(left:6.w),
+                  child: Text(
+                    'Ingredients',
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).scaffoldBackgroundColor,
                     ),
                   ),
-                  SizedBox(height: 80),
+                ),
+                Padding(
+                  padding:  EdgeInsets.only(right:4.w),
+                  child: Icon(
+                    Icons.shopping_cart,
+                    size: 4.h,
+                    color:Theme.of(context).scaffoldBackgroundColor,
+
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding:  EdgeInsets.only(left:4.w,right:4.w),
+          child: Container(
+            height:33.h,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(5.w),
+              border: Border.all(
+                color: Theme.of(context).backgroundColor,
+                width: 2,
+              ),
+            ),
+            padding:  EdgeInsets.all(3.w),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 1.h),
+                  for (int i = 1; i <= 30; i++)
+                    if (_details['strIngredient$i'] != null && _details['strIngredient$i'] != '')
+                      Padding(
+                        padding:  EdgeInsets.symmetric(vertical: 2.w),
+                        child: Container(
+                          child: IngredientItem(
+                            name: '${_details['strMeasure$i']} ${_details['strIngredient$i']}',
+                            recipeName: '',
+                            ingredient: _details['strIngredient$i'],
+                            imageUrl: 'https://www.themealdb.com/images/ingredients/${_details['strIngredient$i'].toLowerCase()}.png',
+                            updateCartState: updateCartState,
+                          ),
+                        ),
+                      ),
+                  SizedBox(height: 1.h),
                 ],
               ),
+            ),
+          ),
+        ),
+        SizedBox(height: 1.h),
+        Center(
+          child: ElevatedButton(
+            onPressed: () {
+              _panelController.open();
+            },
+            child: Text(
+              'View Instructions',
+              style: TextStyle(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              primary: Theme.of(context).backgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5.w),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.w),
             ),
           ),
         ),
@@ -492,30 +473,30 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
 
   Widget _buildInstructionsPanel() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      padding:  EdgeInsets.symmetric(horizontal: 5.w, vertical:2.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Text(
-              '__',
+              '-----',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18.sp,
                 color: Colors.amber.shade900,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          SizedBox(height: 13),
+          SizedBox(height: 2.h),
           Text(
             'Instructions',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 18.sp,
               color: Colors.amber.shade900,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 16.0),
+          SizedBox(height: 2.h),
           Expanded(
             child: ListView.builder(
               itemCount: _details['strInstructions'] != null
@@ -525,11 +506,11 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
                 String step =
                     _details['strInstructions']?.split(' \n\n')[index] ?? '';
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                  padding:  EdgeInsets.only(bottom:15.h),
                   child: Text(
                     step,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 15.sp,
                       color: Theme.of(context).primaryColor,
                     ),
                   ),
@@ -542,13 +523,12 @@ class _detailsScreenState extends State<RecipeDetailsPage> {
     );
   }
 }
-
 class IngredientItem extends StatefulWidget {
   final String name;
   final String recipeName;
   final String ingredient;
   final String imageUrl;
-  final Function updateCartState; // Callback function
+  final Function updateCartState;
 
   const IngredientItem({
     Key? key,
@@ -569,12 +549,11 @@ class _IngredientItemState extends State<IngredientItem> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _userProvider = Provider.of<UserProvider>(context); // Get the UserProvider from the context
+    _userProvider = Provider.of<UserProvider>(context);
   }
 
   void _addToShoppingList(String ingredient) {
-    final shoppingListProvider =
-    Provider.of<ShoppingListProvider>(context, listen: false);
+    final shoppingListProvider = Provider.of<ShoppingListProvider>(context, listen: false);
     shoppingListProvider.addItem(
       widget.name,
       'https://www.themealdb.com/images/ingredients/${widget.ingredient.toLowerCase()}.png',
@@ -589,9 +568,9 @@ class _IngredientItemState extends State<IngredientItem> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: Theme.of(context).cardColor,
+          backgroundColor:  Theme.of(context).canvasColor,
           title: Text(
-            'You need to be logged in to add ingredients to shopping list.',
+            'You need to be logged in to add ingredients to the shopping list.',
             style: TextStyle(
               color: Theme.of(context).primaryColor,
               fontWeight: FontWeight.bold,
@@ -674,4 +653,3 @@ class _IngredientItemState extends State<IngredientItem> {
     );
   }
 }
-
