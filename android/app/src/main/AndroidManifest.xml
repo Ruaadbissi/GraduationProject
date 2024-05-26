@@ -2,9 +2,9 @@
 
 
     <application
-        android:label="magic_cook1"
+        android:label="Magic Cook"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/magicook">
         <activity
             android:name=".MainActivity"
             android:exported="true"
